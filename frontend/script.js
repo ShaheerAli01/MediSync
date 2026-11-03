@@ -8,6 +8,7 @@ const SESSION_KEY = `${STORAGE_PREFIX}_session`;
 
 let currentUser = null;
 let medications = [];
+let allergies = [];
 let doseHistory = {};
 let settings = { doseNotifications: true, stockNotifications: true };
 let isRegistering = false;
@@ -20,6 +21,7 @@ const pageNames = {
   schedule: "Dose Schedule",
   prescriptions: "Prescriptions",
   supplements: "Supplements",
+  allergies: "Medication Allergies",
   professional: "Professional Portal",
   settings: "Settings"
 };
@@ -136,20 +138,42 @@ function exampleMedications() {
 
 function loadUserData() {
   const savedMeds = getJSON(userKey("medications"), null);
+  const savedAllergies = getJSON(userKey("allergies"), []);
+
   medications = Array.isArray(savedMeds) ? savedMeds : exampleMedications();
+  allergies = Array.isArray(savedAllergies) ? savedAllergies : [];
   doseHistory = getJSON(userKey("history"), {});
   settings = getJSON(userKey("settings"), {
     doseNotifications: true,
     stockNotifications: true
   });
+
   saveData();
 }
 
 function saveData() {
   if (!currentUser) return;
   saveJSON(userKey("medications"), medications);
+  saveJSON(userKey("allergies"), allergies);
   saveJSON(userKey("history"), doseHistory);
   saveJSON(userKey("settings"), settings);
+}
+
+function normalizeMedicationName(name) {
+  return String(name ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function findMedicationAllergy(name) {
+  return allergies.find(allergy =>
+    normalizeMedicationName(allergy.medication) === normalizeMedicationName(name)
+  );
+}
+
+function getAllergyMatches() {
+  return medications.map(medication => ({
+    medication,
+    allergy: findMedicationAllergy(medication.name)
+  })).filter(item => item.allergy);
 }
 
 function setupAuth() {
@@ -165,6 +189,7 @@ function setupAuth() {
 
   $("#authForm").addEventListener("submit", event => {
     event.preventDefault();
+
     const email = $("#authEmail").value.trim().toLowerCase();
     const password = $("#authPassword").value;
     const users = getJSON(USER_KEY, []);
@@ -193,11 +218,15 @@ function setupAuth() {
       return;
     }
 
-    const user = users.find(item => item.email === email && item.password === password);
+    const user = users.find(item =>
+      item.email === email && item.password === password
+    );
+
     if (!user) {
       notify("Invalid email or password. Create a demo account first.");
       return;
     }
+
     login(user);
   });
 }
@@ -219,6 +248,7 @@ function logout() {
   sessionStorage.removeItem(SESSION_KEY);
   currentUser = null;
   medications = [];
+  allergies = [];
   doseHistory = {};
   $("#app").classList.add("hidden");
   $("#authScreen").classList.remove("hidden");
@@ -228,11 +258,14 @@ function logout() {
 
 function navigate(page) {
   if (!pageNames[page]) return;
+
   $$(".page").forEach(element => element.classList.remove("active"));
   $(`#${page}Page`).classList.add("active");
+
   $$(".nav-link[data-page]").forEach(button => {
     button.classList.toggle("active", button.dataset.page === page);
   });
+
   $("#breadcrumbCurrent").textContent = pageNames[page];
   $("#sidebar").classList.remove("open");
   window.scrollTo(0, 0);
@@ -257,24 +290,29 @@ function formatTime(time) {
 
 function isScheduledToday(medication) {
   if (medication.frequency !== "weekly") return true;
+
   const start = new Date(`${medication.createdAt}T12:00:00`);
   const today = new Date(`${todayKey()}T12:00:00`);
   const days = Math.round((today - start) / 86400000);
+
   return days >= 0 && days % 7 === 0;
 }
 
 function getDoses() {
   const doses = [];
+
   medications.forEach(medication => {
     if (!isScheduledToday(medication)) return;
 
     const times = [medication.time];
+
     if (medication.frequency === "twice") {
       times.push(minutesToTime(timeToMinutes(medication.time) + 720));
     }
 
     times.forEach((time, index) => {
       const key = `${todayKey()}_${medication.id}_${index}`;
+
       doses.push({
         ...medication,
         doseKey: key,
@@ -284,13 +322,18 @@ function getDoses() {
     });
   });
 
-  return doses.sort((a, b) => timeToMinutes(a.doseTime) - timeToMinutes(b.doseTime));
+  return doses.sort((a, b) =>
+    timeToMinutes(a.doseTime) - timeToMinutes(b.doseTime)
+  );
 }
 
 function getStats() {
   const doses = getDoses();
   const taken = doses.filter(dose => dose.taken).length;
-  const lowStock = medications.filter(medication => medication.quantity <= medication.threshold);
+  const lowStock = medications.filter(medication =>
+    medication.quantity <= medication.threshold
+  );
+
   return {
     total: medications.length,
     doses,
@@ -306,20 +349,31 @@ function iconFor(medication) {
 }
 
 function emptyState(title, description) {
-  return `<div class="empty-state"><div class="empty-icon">✦</div><h3>${title}</h3><p>${description}</p></div>`;
+  return `<div class="empty-state"><div class="empty-icon">✦</div><h3>${escapeHTML(title)}</h3><p>${escapeHTML(description)}</p></div>`;
+}
+
+function allergyLabel(name) {
+  const allergy = findMedicationAllergy(name);
+
+  if (!allergy) return "";
+
+  return `<span class="med-allergy-label">⚠ Recorded allergy: ${escapeHTML(allergy.severity)} severity</span>`;
 }
 
 function renderDose(dose) {
+  const allergy = findMedicationAllergy(dose.name);
+
   const status = dose.taken
     ? `<span class="status-pill taken">✓ Taken</span>`
-    : `<button class="btn btn-primary btn-small" data-action="take-dose" data-id="${escapeHTML(dose.doseKey)}" ${dose.quantity <= 0 ? "disabled" : ""}>Mark Taken</button>`;
+    : `<button class="btn btn-primary btn-small" data-action="take-dose" data-id="${escapeHTML(dose.doseKey)}" ${dose.quantity <= 0 || allergy ? "disabled" : ""}>Mark Taken</button>`;
 
   return `
-    <div class="dose-item">
+    <div class="dose-item ${allergy ? "allergy-flagged" : ""}">
       <div class="med-icon ${dose.type === "supplement" ? "supplement" : ""}">${iconFor(dose)}</div>
       <div class="dose-details">
         <strong>${escapeHTML(dose.name)}</strong>
         <p>${escapeHTML(dose.dosage)} · ${escapeHTML(dose.notes || "Scheduled dose")}</p>
+        ${allergyLabel(dose.name)}
       </div>
       <span class="dose-time">${formatTime(dose.doseTime)}</span>
       ${status}
@@ -329,13 +383,17 @@ function renderDose(dose) {
 
 function renderDashboard() {
   const stats = getStats();
+
   $("#welcomeName").textContent = currentUser.name.split(" ")[0];
   $("#statMedications").textContent = stats.total;
   $("#statTaken").textContent = `${stats.taken}/${stats.doses.length}`;
   $("#statUpcoming").textContent = stats.remaining;
   $("#statLowStock").textContent = stats.lowStock.length;
   $("#progressPercent").textContent = `${stats.percentage}%`;
-  $("#progressRing").style.background = `conic-gradient(var(--primary) ${stats.percentage}%, #edf0fb ${stats.percentage}%)`;
+
+  $("#progressRing").style.background =
+    `conic-gradient(var(--primary) ${stats.percentage}%, #edf0fb ${stats.percentage}%)`;
+
   $("#progressMessage").textContent = stats.doses.length
     ? stats.percentage === 100
       ? "All your scheduled doses are complete!"
@@ -349,11 +407,28 @@ function renderDashboard() {
   $("#dashboardRefills").innerHTML = stats.lowStock.length
     ? stats.lowStock.slice(0, 4).map(medication => `
       <div class="refill-item">
-        <div><strong>${escapeHTML(medication.name)}</strong><p>${medication.quantity} pills remaining</p></div>
+        <div>
+          <strong>${escapeHTML(medication.name)}</strong>
+          <p>${medication.quantity} pills remaining</p>
+        </div>
         <span class="status-pill low">Low stock</span>
       </div>
     `).join("")
     : `<p class="muted small-text">All your medications have sufficient stock.</p>`;
+
+  const matches = getAllergyMatches();
+
+  $("#dashboardAllergyWarning").innerHTML = matches.length
+    ? `
+      <div class="allergy-match-warning">
+        <strong>⚠ Medication Allergy Warning</strong>
+        <p>${matches.map(item =>
+          escapeHTML(item.medication.name)
+        ).join(", ")} ${matches.length === 1 ? "matches" : "match"} a recorded allergy. Review with a healthcare professional before use.</p>
+        <button class="text-button" data-page="allergies">View Allergy Records →</button>
+      </div>
+    `
+    : "";
 }
 
 function renderMedicationRow(medication) {
@@ -363,12 +438,15 @@ function renderMedicationRow(medication) {
     weekly: "Once weekly"
   }[medication.frequency] || "Every day";
 
+  const allergy = findMedicationAllergy(medication.name);
+
   return `
-    <div class="med-row">
+    <div class="med-row ${allergy ? "allergy-flagged" : ""}">
       <div class="med-icon ${medication.type === "supplement" ? "supplement" : ""}">${iconFor(medication)}</div>
       <div class="med-row-main">
         <strong>${escapeHTML(medication.name)}</strong>
         <p>${escapeHTML(medication.dosage)} · ${frequency} · ${formatTime(medication.time)}</p>
+        ${allergyLabel(medication.name)}
       </div>
       <div class="med-row-side">
         <span class="status-pill ${medication.quantity <= medication.threshold ? "low" : "taken"}">${medication.quantity <= medication.threshold ? "Low Stock" : "In Stock"}</span>
@@ -391,6 +469,7 @@ function renderMedications() {
     const matchesFilter = filter === "all"
       || medication.type === filter
       || (filter === "low" && medication.quantity <= medication.threshold);
+
     return matchesSearch && matchesFilter;
   });
 
@@ -402,37 +481,50 @@ function renderMedications() {
 function renderSchedule() {
   const doses = getDoses();
   const taken = doses.filter(dose => dose.taken).length;
+
   $("#scheduleDate").textContent = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric"
   });
+
   $("#scheduleSummary").textContent = `${taken} of ${doses.length} completed`;
 
   if (!doses.length) {
-    $("#fullSchedule").innerHTML = emptyState("Your schedule is empty", "Add medications to see your doses.");
+    $("#fullSchedule").innerHTML = emptyState(
+      "Your schedule is empty",
+      "Add medications to see your doses."
+    );
     return;
   }
 
   const groups = {
     Morning: doses.filter(dose => timeToMinutes(dose.doseTime) < 720),
-    Afternoon: doses.filter(dose => timeToMinutes(dose.doseTime) >= 720 && timeToMinutes(dose.doseTime) < 1020),
+    Afternoon: doses.filter(dose =>
+      timeToMinutes(dose.doseTime) >= 720 &&
+      timeToMinutes(dose.doseTime) < 1020
+    ),
     Evening: doses.filter(dose => timeToMinutes(dose.doseTime) >= 1020)
   };
 
   $("#fullSchedule").innerHTML = Object.entries(groups)
     .filter(([, items]) => items.length)
-    .map(([title, items]) => `<div class="schedule-group-title">${title.toUpperCase()}</div>${items.map(renderDose).join("")}`)
-    .join("");
+    .map(([title, items]) =>
+      `<div class="schedule-group-title">${title.toUpperCase()}</div>${items.map(renderDose).join("")}`
+    ).join("");
 }
 
 function renderPrescriptions() {
-  const prescriptions = medications.filter(medication => medication.type === "medication");
+  const prescriptions = medications.filter(medication =>
+    medication.type === "medication"
+  );
+
   $("#prescriptionList").innerHTML = prescriptions.length
     ? prescriptions.map(medication => `
       <div class="prescription-card">
         <span class="status-pill neutral">Medication Record</span>
         <h3>${escapeHTML(medication.name)}</h3>
+        ${allergyLabel(medication.name)}
         <p><strong>Dosage:</strong> ${escapeHTML(medication.dosage)}</p>
         <p><strong>Prescribed by:</strong> ${escapeHTML(medication.doctor || "Not specified")}</p>
         <p><strong>Remaining:</strong> ${medication.quantity} pills</p>
@@ -447,25 +539,81 @@ function renderPrescriptions() {
 }
 
 function renderSupplements() {
-  const supplements = medications.filter(medication => medication.type === "supplement");
+  const supplements = medications.filter(medication =>
+    medication.type === "supplement"
+  );
+
   $("#supplementList").innerHTML = supplements.length
     ? supplements.map(renderMedicationRow).join("")
     : emptyState("No supplements yet", "Add supplements to your routine.");
 }
 
+function renderAllergies() {
+  const query = $("#allergySearch").value.trim().toLowerCase();
+  const filter = $("#allergyFilter").value;
+
+  $("#allergyTotal").textContent = allergies.length;
+  $("#allergySevere").textContent = allergies.filter(allergy =>
+    allergy.severity === "severe"
+  ).length;
+
+  const filtered = allergies.filter(allergy => {
+    const matchesSearch =
+      allergy.medication.toLowerCase().includes(query) ||
+      allergy.reaction.toLowerCase().includes(query);
+
+    const matchesFilter = filter === "all" || allergy.severity === filter;
+
+    return matchesSearch && matchesFilter;
+  });
+
+  $("#allergyList").innerHTML = filtered.length
+    ? filtered.map(allergy => `
+      <div class="allergy-card">
+        <div class="allergy-card-icon">⚠</div>
+        <div class="allergy-card-content">
+          <div class="allergy-card-header">
+            <strong>${escapeHTML(allergy.medication)}</strong>
+            <span class="severity-pill ${escapeHTML(allergy.severity)}">${escapeHTML(allergy.severity.charAt(0).toUpperCase() + allergy.severity.slice(1))}</span>
+          </div>
+          <p><strong>Reaction:</strong> ${escapeHTML(allergy.reaction)}</p>
+          <p><strong>Date of reaction:</strong> ${escapeHTML(allergy.date || "Not specified")}</p>
+          ${allergy.notes ? `<p><strong>Notes:</strong> ${escapeHTML(allergy.notes)}</p>` : ""}
+        </div>
+        <div class="allergy-card-actions">
+          <button class="action-btn" data-action="edit-allergy" data-id="${escapeHTML(allergy.id)}">Edit</button>
+          <button class="action-btn delete" data-action="delete-allergy" data-id="${escapeHTML(allergy.id)}">Delete</button>
+        </div>
+      </div>
+    `).join("")
+    : emptyState(
+      "No allergy records found",
+      allergies.length
+        ? "Try another search or severity filter."
+        : "Add a medication allergy to start your record."
+    );
+}
+
 function renderProfessional() {
-  const prescriptions = medications.filter(medication => medication.type === "medication");
+  const prescriptions = medications.filter(medication =>
+    medication.type === "medication"
+  );
+
   $("#professionalList").innerHTML = prescriptions.length
     ? prescriptions.map(medication => `
       <div class="professional-row">
         <div>
           <strong>${escapeHTML(medication.name)}</strong>
           <p>Current dosage: ${escapeHTML(medication.dosage)} · Prescriber: ${escapeHTML(medication.doctor || "Unspecified")}</p>
+          ${allergyLabel(medication.name)}
         </div>
         <button class="btn btn-secondary btn-small" data-action="change-dosage" data-id="${escapeHTML(medication.id)}">Simulate Dosage Change</button>
       </div>
     `).join("")
-    : emptyState("No prescriptions available", "Add a medication record to preview this workflow.");
+    : emptyState(
+      "No prescriptions available",
+      "Add a medication record to preview this workflow."
+    );
 }
 
 function renderNotifications() {
@@ -473,6 +621,13 @@ function renderNotifications() {
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const alerts = [];
+
+  getAllergyMatches().forEach(item => {
+    alerts.push({
+      title: `Allergy warning: ${item.medication.name}`,
+      message: "This medication matches a recorded allergy. Consult a healthcare professional."
+    });
+  });
 
   if (settings.stockNotifications) {
     stats.lowStock.forEach(medication => {
@@ -484,18 +639,25 @@ function renderNotifications() {
   }
 
   if (settings.doseNotifications) {
-    stats.doses.filter(dose => !dose.taken && timeToMinutes(dose.doseTime) <= nowMinutes)
-      .forEach(dose => {
-        alerts.push({
-          title: `${dose.name} dose due`,
-          message: `Scheduled for ${formatTime(dose.doseTime)}.`
-        });
+    stats.doses.filter(dose =>
+      !dose.taken && timeToMinutes(dose.doseTime) <= nowMinutes
+    ).forEach(dose => {
+      alerts.push({
+        title: `${dose.name} dose due`,
+        message: `Scheduled for ${formatTime(dose.doseTime)}.`
       });
+    });
   }
 
   $("#notificationDot").classList.toggle("hidden", alerts.length === 0);
+
   $("#notificationList").innerHTML = alerts.length
-    ? alerts.map(alert => `<div class="notification-item"><strong>${escapeHTML(alert.title)}</strong><p>${escapeHTML(alert.message)}</p></div>`).join("")
+    ? alerts.map(alert => `
+      <div class="notification-item">
+        <strong>${escapeHTML(alert.title)}</strong>
+        <p>${escapeHTML(alert.message)}</p>
+      </div>
+    `).join("")
     : `<p class="muted small-text">You're all caught up!</p>`;
 }
 
@@ -508,17 +670,20 @@ function renderSettings() {
 
 function renderAll() {
   if (!currentUser) return;
+
   $("#userAvatar").textContent = currentUser.name.charAt(0).toUpperCase();
   $("#topDate").textContent = new Date().toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric"
   });
+
   renderDashboard();
   renderMedications();
   renderSchedule();
   renderPrescriptions();
   renderSupplements();
+  renderAllergies();
   renderProfessional();
   renderNotifications();
   renderSettings();
@@ -548,6 +713,7 @@ function openMedicationModal(id = null) {
     $("#medNotes").value = medication.notes || "";
   } else {
     $("#modalTitle").textContent = "Add Medication";
+
     if ($("#supplementsPage").classList.contains("active")) {
       $("#medType").value = "supplement";
     }
@@ -586,14 +752,28 @@ function saveMedication(event) {
     return;
   }
 
-  if (!Number.isInteger(medication.quantity) || !Number.isInteger(medication.threshold)
-      || medication.quantity < 0 || medication.threshold < 0) {
+  if (!Number.isInteger(medication.quantity) ||
+      !Number.isInteger(medication.threshold) ||
+      medication.quantity < 0 ||
+      medication.threshold < 0) {
     notify("Pill counts must be nonnegative whole numbers.");
     return;
   }
 
+  const allergy = findMedicationAllergy(medication.name);
+
+  if (allergy) {
+    const proceed = confirm(
+      `WARNING: ${medication.name} matches a recorded medication allergy.\n\nReaction: ${allergy.reaction}\nSeverity: ${allergy.severity}\n\nThis demo cannot determine whether the medication is safe. Save this record anyway?`
+    );
+
+    if (!proceed) return;
+  }
+
   if (existing) {
-    medications = medications.map(item => item.id === id ? medication : item);
+    medications = medications.map(item =>
+      item.id === id ? medication : item
+    );
   } else {
     medications.push(medication);
   }
@@ -601,15 +781,21 @@ function saveMedication(event) {
   saveData();
   closeMedicationModal();
   renderAll();
-  notify(existing ? "Medication updated successfully." : "Medication added successfully.");
+
+  notify(existing
+    ? "Medication updated successfully."
+    : "Medication added successfully."
+  );
 }
 
 function deleteMedication(id) {
   const medication = medications.find(item => item.id === id);
   if (!medication) return;
+
   if (!confirm(`Remove ${medication.name} from your medication list?`)) return;
 
   medications = medications.filter(item => item.id !== id);
+
   Object.keys(doseHistory).forEach(key => {
     if (key.includes(`_${id}_`)) delete doseHistory[key];
   });
@@ -619,18 +805,132 @@ function deleteMedication(id) {
   notify("Medication removed.");
 }
 
+function openAllergyModal(id = null) {
+  $("#allergyForm").reset();
+  $("#allergyId").value = "";
+  $("#allergySeverity").value = "unknown";
+
+  if (id) {
+    const allergy = allergies.find(item => item.id === id);
+    if (!allergy) return;
+
+    $("#allergyModalTitle").textContent = "Edit Medication Allergy";
+    $("#allergyId").value = allergy.id;
+    $("#allergyMedication").value = allergy.medication;
+    $("#allergyReaction").value = allergy.reaction;
+    $("#allergySeverity").value = allergy.severity;
+    $("#allergyDate").value = allergy.date || "";
+    $("#allergyNotes").value = allergy.notes || "";
+  } else {
+    $("#allergyModalTitle").textContent = "Add Medication Allergy";
+  }
+
+  $("#allergyModal").classList.remove("hidden");
+  $("#allergyMedication").focus();
+}
+
+function closeAllergyModal() {
+  $("#allergyModal").classList.add("hidden");
+}
+
+function saveAllergy(event) {
+  event.preventDefault();
+
+  const id = $("#allergyId").value;
+  const existing = allergies.find(item => item.id === id);
+
+  const allergy = {
+    id: id || makeId(),
+    medication: $("#allergyMedication").value.trim(),
+    reaction: $("#allergyReaction").value.trim(),
+    severity: $("#allergySeverity").value,
+    date: $("#allergyDate").value,
+    notes: $("#allergyNotes").value.trim(),
+    createdAt: existing?.createdAt || todayKey()
+  };
+
+  if (!allergy.medication || !allergy.reaction) {
+    notify("Please enter the medication and allergic reaction.");
+    return;
+  }
+
+  if (!["mild", "moderate", "severe", "unknown"].includes(allergy.severity)) {
+    notify("Please select a valid severity.");
+    return;
+  }
+
+  const duplicate = allergies.some(item =>
+    item.id !== allergy.id &&
+    normalizeMedicationName(item.medication) ===
+    normalizeMedicationName(allergy.medication)
+  );
+
+  if (duplicate) {
+    notify("An allergy record for this medication already exists.");
+    return;
+  }
+
+  if (existing) {
+    allergies = allergies.map(item =>
+      item.id === id ? allergy : item
+    );
+  } else {
+    allergies.push(allergy);
+  }
+
+  saveData();
+  closeAllergyModal();
+  renderAll();
+
+  const match = medications.find(medication =>
+    normalizeMedicationName(medication.name) ===
+    normalizeMedicationName(allergy.medication)
+  );
+
+  if (match) {
+    notify(`Allergy recorded. Warning: ${match.name} is in your medication list.`);
+  } else {
+    notify(existing
+      ? "Allergy record updated successfully."
+      : "Medication allergy added successfully."
+    );
+  }
+}
+
+function deleteAllergy(id) {
+  const allergy = allergies.find(item => item.id === id);
+  if (!allergy) return;
+
+  if (!confirm(`Delete the allergy record for ${allergy.medication}?`)) return;
+
+  allergies = allergies.filter(item => item.id !== id);
+
+  saveData();
+  renderAll();
+  notify("Allergy record deleted.");
+}
+
 function takeDose(key) {
   const dose = getDoses().find(item => item.doseKey === key);
   if (!dose || dose.taken) return;
 
   const medication = medications.find(item => item.id === dose.id);
+
   if (!medication || medication.quantity <= 0) {
     notify("No pills remaining. Update your inventory.");
     return;
   }
 
+  const allergy = findMedicationAllergy(medication.name);
+
+  if (allergy) {
+    notify(`Allergy warning: ${medication.name} matches a recorded allergy. Consult a healthcare professional.`);
+    return;
+  }
+
   doseHistory[key] = true;
   medication.quantity = Math.max(0, medication.quantity - 1);
+
   saveData();
   renderAll();
   notify(`${medication.name} marked as taken.`);
@@ -644,8 +944,13 @@ function simulateDosageChange(id) {
   const medication = medications.find(item => item.id === id);
   if (!medication) return;
 
-  const value = prompt(`Demo only: enter a new dosage for ${medication.name}`, medication.dosage);
+  const value = prompt(
+    `Demo only: enter a new dosage for ${medication.name}`,
+    medication.dosage
+  );
+
   if (value === null) return;
+
   if (!value.trim() || value.length > 80) {
     notify("Please enter a valid dosage.");
     return;
@@ -666,8 +971,16 @@ function openVendor() {
     notify("Enter a supplement name.");
     return;
   }
+
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100) {
     notify("Enter a quantity between 1 and 100.");
+    return;
+  }
+
+  const allergy = findMedicationAllergy(name);
+
+  if (allergy) {
+    notify("This supplement matches a recorded allergy. Review with a healthcare professional.");
     return;
   }
 
@@ -689,7 +1002,10 @@ async function enableBrowserNotifications() {
 
   try {
     const permission = await Notification.requestPermission();
-    notify(permission === "granted" ? "Browser notifications enabled." : "Notification permission was not granted.");
+    notify(permission === "granted"
+      ? "Browser notifications enabled."
+      : "Notification permission was not granted."
+    );
   } catch {
     notify("Could not enable browser notifications.");
   }
@@ -706,14 +1022,23 @@ function checkDueNotifications() {
 
   getDoses().forEach(dose => {
     const dueMinutes = timeToMinutes(dose.doseTime);
+
     if (dose.taken || sent.includes(dose.doseKey)) return;
 
     if (currentMinutes >= dueMinutes && currentMinutes < dueMinutes + 2) {
       try {
-        new Notification("MediTrack Dose Reminder", {
-          body: `Time for ${dose.name} - ${dose.dosage}`,
-          tag: dose.doseKey
-        });
+        const allergy = findMedicationAllergy(dose.name);
+
+        new Notification(
+          allergy ? "MediSync Allergy Warning" : "MediSync Dose Reminder",
+          {
+            body: allergy
+              ? `${dose.name} matches a recorded allergy. Consult a healthcare professional.`
+              : `Time for ${dose.name} - ${dose.dosage}`,
+            tag: dose.doseKey
+          }
+        );
+
         sent.push(dose.doseKey);
       } catch {
         return;
@@ -734,6 +1059,7 @@ function startNotificationChecks() {
 function setupEvents() {
   document.addEventListener("click", event => {
     const pageButton = event.target.closest("[data-page]");
+
     if (pageButton) {
       navigate(pageButton.dataset.page);
       return;
@@ -750,6 +1076,9 @@ function setupEvents() {
     if (action === "delete-medication") deleteMedication(id);
     if (action === "take-dose") takeDose(id);
     if (action === "change-dosage") simulateDosageChange(id);
+    if (action === "add-allergy") openAllergyModal();
+    if (action === "edit-allergy") openAllergyModal(id);
+    if (action === "delete-allergy") deleteAllergy(id);
   });
 
   $("#medicationForm").addEventListener("submit", saveMedication);
@@ -760,8 +1089,18 @@ function setupEvents() {
     if (event.target === $("#medicationModal")) closeMedicationModal();
   });
 
+  $("#allergyForm").addEventListener("submit", saveAllergy);
+  $("#closeAllergyModal").addEventListener("click", closeAllergyModal);
+  $("#cancelAllergyModal").addEventListener("click", closeAllergyModal);
+
+  $("#allergyModal").addEventListener("click", event => {
+    if (event.target === $("#allergyModal")) closeAllergyModal();
+  });
+
   $("#medSearch").addEventListener("input", renderMedications);
   $("#medFilter").addEventListener("change", renderMedications);
+  $("#allergySearch").addEventListener("input", renderAllergies);
+  $("#allergyFilter").addEventListener("change", renderAllergies);
   $("#logoutBtn").addEventListener("click", logout);
 
   $("#menuToggle").addEventListener("click", () => {
@@ -782,6 +1121,7 @@ function setupEvents() {
 
   $("#saveProfile").addEventListener("click", () => {
     const name = $("#settingsName").value.trim();
+
     if (!name) {
       notify("Display name cannot be empty.");
       return;
@@ -789,10 +1129,12 @@ function setupEvents() {
 
     const users = getJSON(USER_KEY, []);
     const user = users.find(item => item.id === currentUser.id);
+
     if (user) {
       user.name = name;
       saveJSON(USER_KEY, users);
     }
+
     currentUser.name = name;
     renderAll();
     notify("Profile updated.");
@@ -811,9 +1153,12 @@ function setupEvents() {
   });
 
   $("#resetDemo").addEventListener("click", () => {
-    if (!confirm("Reset your medications and dose history to example data?")) return;
+    if (!confirm("Reset your medications, dose history, and allergy records to example data?")) return;
+
     medications = exampleMedications();
+    allergies = [];
     doseHistory = {};
+
     saveData();
     renderAll();
     notify("Example data restored.");
@@ -822,6 +1167,7 @@ function setupEvents() {
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") {
       closeMedicationModal();
+      closeAllergyModal();
       $("#notificationPanel").classList.add("hidden");
       $("#sidebar").classList.remove("open");
     }

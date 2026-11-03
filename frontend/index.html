@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#f6f8fc">
-  <title>MediTrack | Medication Management</title>
+  <title>MediSync | Medication Management</title>
   <link rel="stylesheet" href="styles.css">
   <script src="script.js" defer></script>
 </head>
@@ -16,11 +16,10 @@
     <div class="auth-card">
       <div class="brand auth-brand">
         <div class="brand-icon">✚</div>
-        <span>MediTrack</span>
+        <span>MediSync</span>
       </div>
       <h1 id="authTitle">Welcome back</h1>
       <p>Manage your medications with confidence.</p>
-
       <form id="authForm">
         <div id="nameField" class="form-group hidden">
           <label for="authName">Full name</label>
@@ -36,7 +35,6 @@
         </div>
         <button class="btn btn-primary full" type="submit" id="authSubmit">Sign in</button>
       </form>
-
       <p class="auth-switch">
         <span id="authPrompt">Don't have an account?</span>
         <button id="authToggle" class="text-button" type="button">Create account</button>
@@ -49,9 +47,8 @@
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <div class="brand-icon">✚</div>
-        <span>MediTrack</span>
+        <span>MediSync</span>
       </div>
-
       <div class="sidebar-label">WORKSPACE</div>
       <nav class="nav">
         <button class="nav-link active" data-page="dashboard"><span>▦</span> Dashboard</button>
@@ -59,14 +56,13 @@
         <button class="nav-link" data-page="schedule"><span>◷</span> Dose Schedule</button>
         <button class="nav-link" data-page="prescriptions"><span>▧</span> Prescriptions</button>
         <button class="nav-link" data-page="supplements"><span>◈</span> Supplements</button>
+        <button class="nav-link" data-page="allergies"><span>⚠</span> Medication Allergies</button>
       </nav>
-
       <div class="sidebar-label">MANAGEMENT</div>
       <nav class="nav">
         <button class="nav-link" data-page="professional"><span>⚕</span> Professional Portal</button>
         <button class="nav-link" data-page="settings"><span>⚙</span> Settings</button>
       </nav>
-
       <div class="sidebar-bottom">
         <div class="help-card">
           <div class="help-icon">♡</div>
@@ -97,12 +93,11 @@
           <div class="welcome-row">
             <div>
               <div class="eyebrow">YOUR HEALTH OVERVIEW</div>
-              <h1>Good day, <span id="welcomeName">there</span> <span class="wave">✳</span></h1>
+              <h1>Good day, <span id="welcomeName">there</span> <span class="wave">👋</span></h1>
               <p>Here's what's happening with your medications today.</p>
             </div>
             <button class="btn btn-primary" data-action="add-medication">＋ Add Medication</button>
           </div>
-
           <div class="hero-card">
             <div class="hero-content">
               <div class="hero-tag">✦ YOUR DAILY COMPANION</div>
@@ -118,7 +113,7 @@
               <div class="hero-plus">✚</div>
             </div>
           </div>
-
+          <div id="dashboardAllergyWarning"></div>
           <div class="stats-grid">
             <div class="stat-card">
               <div class="stat-top"><span class="stat-icon blue">▤</span><span class="stat-caption">Active</span></div>
@@ -145,7 +140,6 @@
               <div class="stat-foot">Medications to refill</div>
             </div>
           </div>
-
           <div class="dashboard-grid">
             <div class="panel">
               <div class="panel-heading">
@@ -154,7 +148,6 @@
               </div>
               <div id="dashboardSchedule"></div>
             </div>
-
             <div class="panel">
               <div class="panel-heading">
                 <div><h3>Daily Progress</h3><p>You're building healthy habits</p></div>
@@ -180,7 +173,12 @@
           <div class="panel">
             <div class="toolbar">
               <input id="medSearch" class="search-input" type="search" placeholder="Search medications...">
-              <select id="medFilter"><option value="all">All medications</option><option value="medication">Prescriptions & medicines</option><option value="supplement">Supplements</option><option value="low">Low stock</option></select>
+              <select id="medFilter">
+                <option value="all">All medications</option>
+                <option value="medication">Prescriptions & medicines</option>
+                <option value="supplement">Supplements</option>
+                <option value="low">Low stock</option>
+              </select>
             </div>
             <div id="medicationList" class="medication-list"></div>
           </div>
@@ -204,7 +202,10 @@
         </section>
 
         <section id="supplementsPage" class="page">
-          <div class="page-heading"><div><div class="eyebrow">WELLNESS ESSENTIALS</div><h1>Supplements</h1><p>Track your supplements and prepare orders from your preferred vendor.</p></div><button class="btn btn-primary" data-action="add-medication">＋ Add Supplement</button></div>
+          <div class="page-heading">
+            <div><div class="eyebrow">WELLNESS ESSENTIALS</div><h1>Supplements</h1><p>Track your supplements and prepare orders from your preferred vendor.</p></div>
+            <button class="btn btn-primary" data-action="add-medication">＋ Add Supplement</button>
+          </div>
           <div class="panel">
             <div class="panel-heading"><div><h3>My Supplements</h3><p>Supplements currently in your routine</p></div></div>
             <div id="supplementList" class="medication-list"></div>
@@ -217,7 +218,48 @@
               <div class="form-group"><label for="orderQuantity">Quantity</label><input id="orderQuantity" type="number" min="1" max="100" value="1"></div>
             </div>
             <button id="orderButton" class="btn btn-primary">Find at Vendor ↗</button>
-            <p class="muted small-text">Opens a retailer search. Purchasing and preordering are not completed inside MediTrack.</p>
+            <p class="muted small-text">Opens a retailer search. Purchasing and preordering are not completed inside MediSync.</p>
+          </div>
+        </section>
+
+        <section id="allergiesPage" class="page">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">PATIENT SAFETY RECORD</div>
+              <h1>Medication Allergies</h1>
+              <p>Keep a record of medications that have caused allergic reactions.</p>
+            </div>
+            <button class="btn btn-primary" data-action="add-allergy">＋ Add Allergy</button>
+          </div>
+          <div class="allergy-info-banner">
+            <strong>⚠ Important Safety Information</strong>
+            <p>These are patient-reported allergy records. Always confirm allergies with a qualified healthcare professional.</p>
+          </div>
+          <div class="allergy-summary-grid">
+            <div class="allergy-summary-card">
+              <span class="allergy-summary-icon">⚠</span>
+              <div><strong id="allergyTotal">0</strong><p>Recorded Allergies</p></div>
+            </div>
+            <div class="allergy-summary-card">
+              <span class="allergy-summary-icon severe">!</span>
+              <div><strong id="allergySevere">0</strong><p>Severe Allergies</p></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-heading">
+              <div><h3>Allergy Records</h3><p>Medications and documented reactions</p></div>
+            </div>
+            <div class="toolbar">
+              <input id="allergySearch" class="search-input" type="search" placeholder="Search medication allergies...">
+              <select id="allergyFilter">
+                <option value="all">All severities</option>
+                <option value="mild">Mild</option>
+                <option value="moderate">Moderate</option>
+                <option value="severe">Severe</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </div>
+            <div id="allergyList"></div>
           </div>
         </section>
 
@@ -231,7 +273,7 @@
         </section>
 
         <section id="settingsPage" class="page">
-          <div class="page-heading"><div><div class="eyebrow">YOUR PREFERENCES</div><h1>Settings</h1><p>Customize your MediTrack experience.</p></div></div>
+          <div class="page-heading"><div><div class="eyebrow">YOUR PREFERENCES</div><h1>Settings</h1><p>Customize your MediSync experience.</p></div></div>
           <div class="panel settings-panel">
             <h3>Profile</h3>
             <div class="form-group"><label for="settingsName">Display name</label><input id="settingsName"></div>
@@ -247,7 +289,7 @@
           </div>
           <div class="panel spaced-panel settings-panel">
             <h3>Demo Data</h3>
-            <p class="muted">Reset your current medication list to the example medications.</p>
+            <p class="muted">Reset your medication list, dose history, and allergy records to example data.</p>
             <button id="resetDemo" class="btn btn-danger-outline">Reset Example Data</button>
           </div>
         </section>
@@ -275,6 +317,52 @@
         <div class="form-group"><label for="medDoctor">Prescribed by (optional)</label><input id="medDoctor" maxlength="100" placeholder="e.g. Dr. Smith"></div>
         <div class="form-group"><label for="medNotes">Notes</label><textarea id="medNotes" rows="2" maxlength="500" placeholder="Additional instructions..."></textarea></div>
         <div class="modal-actions"><button type="button" class="btn btn-secondary" id="cancelModal">Cancel</button><button type="submit" class="btn btn-primary">Save Medication</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="allergyModal" class="modal-overlay hidden">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="allergyModalTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="allergyModalTitle">Add Medication Allergy</h2>
+          <p>Document a medication and the reaction experienced.</p>
+        </div>
+        <button id="closeAllergyModal" class="icon-button" aria-label="Close">×</button>
+      </div>
+      <form id="allergyForm">
+        <input type="hidden" id="allergyId">
+        <div class="form-group">
+          <label for="allergyMedication">Medication name *</label>
+          <input id="allergyMedication" required maxlength="100" placeholder="e.g. Penicillin">
+        </div>
+        <div class="form-group">
+          <label for="allergyReaction">Allergic reaction *</label>
+          <textarea id="allergyReaction" rows="3" required maxlength="500" placeholder="Describe the symptoms experienced"></textarea>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="allergySeverity">Severity *</label>
+            <select id="allergySeverity" required>
+              <option value="unknown">Unknown</option>
+              <option value="mild">Mild</option>
+              <option value="moderate">Moderate</option>
+              <option value="severe">Severe</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="allergyDate">Date of reaction (optional)</label>
+            <input id="allergyDate" type="date">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="allergyNotes">Additional notes</label>
+          <textarea id="allergyNotes" rows="3" maxlength="500" placeholder="e.g. Confirmed by a doctor, treatment received"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelAllergyModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Allergy</button>
+        </div>
       </form>
     </div>
   </div>
