@@ -71,7 +71,13 @@ export function MS_Delete(req) {
 //view user 
 export function MS_Get(req) {
     app.get(`/users`, (req,res)=>{
-        return res.status(200).json(userDatabase);
+        const userId = parseInt(req.params.id);
+        const userIndex = userDatabase.findIndex(user => user.id === userId);
+        if(userIndex === -1){
+            return res.status(404).json({error:`User ${userId} not found in database.`});
+        }
+        return userDatabase.userIndex;
+        //return res.status(200).json(userDatabase);
     });
 }
 
