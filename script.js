@@ -1,5 +1,11 @@
-import { MS_Post } from './server.js';
-import { MS_Get } from './server.js';
+//import { MS_Post } from './server.js';
+//import { MS_Get } from './server.js';
+async function getUser(){
+  const response = await fetch ("http://localhost:3000/users");
+  return await respons.json();
+}
+
+//incomplet needs another async function
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];

@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
 
+app.use(express.json());
+
 const port = 3000;
 /*
 app.get(`/`, (req, res) => {
@@ -20,13 +22,13 @@ function MS_Listen() {
     })
 }
 
-MS_Listen();
+//MS_Listen();
 
 let userDatabase = [{id: 1, email: "jeff.paterson23@gmail.com", password: "20L67KG112", firstName: "Jeff", lastName: "Paterson"}];
 let nextId = 2;
 
 //user creation
-export function MS_Post(MSuser) {
+function MS_Post() {
     app.post("/users",(req, res)=>{
         const {email, password, firstName, lastName} = req.body;
 
@@ -34,15 +36,15 @@ export function MS_Post(MSuser) {
             return res.status(400).json({error: `Not all of the required fields have been filled out.`});
         }
 
-        const newUser = MSuser;/*{
+        const newUser = {
             id: nextId,
             email: email,
             password: password,
             firstName: firstName,
             lastName: lastName
-        };*/
+        };
 
-        console.log(MSuser.email)
+        console.log(newUseruser.email)
 
         userDatabase.push(newUser);
         nextId++;
@@ -51,7 +53,7 @@ export function MS_Post(MSuser) {
 }
 
 //User account removal
-export function MS_Delete(req) {
+function MS_Delete(req) {
     app.delete("/user/:id",(req, res)=>{
         const userId = parseInt(req.params.id);
 
@@ -69,19 +71,27 @@ export function MS_Delete(req) {
 }
 
 //view user 
-export function MS_Get(req) {
+function MS_Get(req) {
     app.get(`/users`, (req,res)=>{
-        const userId = parseInt(req.params.id);
+        /*const userId = parseInt(req.params.id);
         const userIndex = userDatabase.findIndex(user => user.id === userId);
         if(userIndex === -1){
             return res.status(404).json({error:`User ${userId} not found in database.`});
         }
-        return userDatabase.userIndex;
-        //return res.status(200).json(userDatabase);
+        return userDatabase.userIndex;*/
+        return res.status(200).json(userDatabase);
     });
 }
 
-app.listen(port, ()=> {
+/*app.listen(port, ()=> {
     console.log(`Server is running on http://localhost:${port}`);
+*/
+MS_Post();
+MS_Delete();
+MS_Get();
+MS_Listen();
 
-});
+module.exports = { MS_Post, 
+    MS_Listen, 
+    MS_Delete, 
+    MS_Get };
