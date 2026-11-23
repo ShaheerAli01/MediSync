@@ -1,5 +1,27 @@
-import { MS_Post } from './server.js';
-import { MS_Get } from './server.js';
+//import { MS_Post } from './server.js';
+//import { MS_Get } from './server.js';
+async function getUser(){
+  try {
+    const response = await fetch("http://localhost:3000/users");
+    if (!response.ok) return getJSON(USER_KEY, []);
+    const data = await response.json();
+    return Array.isArray(data) ? data : getJSON(USER_KEY, []);
+  } catch {
+    return getJSON(USER_KEY, []);
+  }
+}
+
+//incomplet needs another async function
+async function createUser(user) {
+  const response = await fetch("http://localhost:3000/users", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(user)
+  });
+  return await response.json();
+}
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -178,7 +200,7 @@ function getAllergyMatches() {
   })).filter(item => item.allergy);
 }
 
-function setupAuth() {
+async function setupAuth() {
   $("#authToggle").addEventListener("click", () => {
     isRegistering = !isRegistering;
     $("#nameField").classList.toggle("hidden", !isRegistering);
@@ -189,44 +211,59 @@ function setupAuth() {
     $("#authToggle").textContent = isRegistering ? "Sign in" : "Create account";
   });
 
-  $("#authForm").addEventListener("submit", event => {
+  $("#authForm").addEventListener("submit", async event => {
     event.preventDefault();
 
     const email = $("#authEmail").value.trim().toLowerCase();
     const password = $("#authPassword").value;
-    const users = MS_Get();
-    //const users = getJSON(USER_KEY, []);
 
-    if (isRegistering) {
-      if (users.some(user => user.email === email)) {
-        notify("An account with this email already exists.");
+    try {
+      const users = await getUser();
+      const userList = Array.isArray(users) ? users : [];
+
+      if (isRegistering) {
+        if (userList.some(user => user.email === email)) {
+          notify("An account with this email already exists.");
+          return;
+        }
+
+        const user = {
+          id: makeId(),
+          name: $("#authName").value.trim(),
+          email,
+          password
+        };
+
+        if (!user.name) {
+          notify("Please enter your name.");
+          return;
+        }
+
+        try {
+          await createUser(user);
+        } catch {
+          notify("Saved locally; server on port 3000 is unreachable.");
+        }
+
+        userList.push(user);
+        saveJSON(USER_KEY, userList);
+        login(user);
         return;
       }
 
-      const user = {
-        id: makeId(),
-        name: $("#authName").value.trim(),
-        email,
-        password
-      };
+      const user = userList.find(item =>
+        item.email === email && item.password === password
+      );
 
-      console.log(user.id);
-      console.log(user.name);
-      console.log(user.email);
-      console.log(user.password);
-
-      if (!user.name) {
-        notify("Please enter your name.");
+      if (!user) {
+        notify("Invalid email or password. Create a demo account first.");
         return;
       }
 
-      const { MS_Post } = require('./server.js');
-      MS_Post(user)
-
-      users.push(user);
-      saveJSON(USER_KEY, users);
       login(user);
-      return;
+    } catch (error) {
+      console.error(error);
+      notify("Something went wrong while signing in.");
     }
 
     const user = users.find(item =>
