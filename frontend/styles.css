@@ -17,15 +17,7 @@
 }
 
 * { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  font-family: 'DM Sans', sans-serif;
-  background: var(--background);
-  color: var(--text);
-  font-size: 14px;
-}
-
+body { margin: 0; font-family: 'DM Sans', sans-serif; background: var(--background); color: var(--text); font-size: 14px; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { opacity: .5; cursor: not-allowed; }
@@ -53,8 +45,8 @@ p { color: var(--muted); line-height: 1.6; }
   display: flex;
   flex-direction: column;
   z-index: 50;
+  overflow-y: auto;
 }
-
 .brand {
   display: flex;
   align-items: center;
@@ -66,7 +58,6 @@ p { color: var(--muted); line-height: 1.6; }
   padding: 0 12px;
   margin-bottom: 48px;
 }
-
 .brand-icon {
   width: 36px;
   height: 36px;
@@ -78,15 +69,7 @@ p { color: var(--muted); line-height: 1.6; }
   background: var(--primary);
   box-shadow: 0 6px 15px #5367e92e;
 }
-
-.sidebar-label {
-  color: #a4acbd;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 1.6px;
-  margin: 0 13px 13px;
-}
-
+.sidebar-label { color: #a4acbd; font-size: 10px; font-weight: 800; letter-spacing: 1.6px; margin: 0 13px 13px; }
 .nav { display: grid; gap: 5px; margin-bottom: 31px; }
 .nav-link {
   border: 0;
@@ -102,7 +85,6 @@ p { color: var(--muted); line-height: 1.6; }
   width: 100%;
   transition: .2s;
 }
-
 .nav-link span { font-size: 19px; width: 21px; text-align: center; }
 .nav-link:hover { background: #f5f6ff; color: var(--primary); }
 .nav-link.active { color: var(--primary); background: var(--primary-light); }
@@ -123,7 +105,6 @@ p { color: var(--muted); line-height: 1.6; }
   align-items: center;
   justify-content: space-between;
 }
-
 .topbar-left, .topbar-right { display: flex; align-items: center; gap: 23px; }
 .breadcrumb { color: #98a0b1; font-size: 12px; }
 .breadcrumb span { margin: 0 9px; color: #c5cad4; }
@@ -163,7 +144,6 @@ p { color: var(--muted); line-height: 1.6; }
   align-items: center;
   margin-bottom: 23px;
 }
-
 .hero-content { position: relative; z-index: 2; max-width: 480px; }
 .hero-tag { color: #e0e5ff; font-size: 10px; font-weight: 800; letter-spacing: 1.6px; margin-bottom: 14px; }
 .hero-card h2 { font-size: 25px; line-height: 1.35; margin-bottom: 11px; }
@@ -286,11 +266,47 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
 .auth-switch { margin: 20px 0 0 !important; }
 .demo-note { margin: 18px 0 0 !important; color: #b2a0a0; font-size: 10px !important; }
 
+.allergy-info-banner {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 18px 21px;
+  margin-bottom: 22px;
+  color: #9a5518;
+}
+.allergy-info-banner strong { font-size: 13px; display: block; margin-bottom: 7px; }
+.allergy-info-banner p { font-size: 12px; color: #a66c37; margin: 0; }
+.allergy-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 22px; }
+.allergy-summary-card { display: flex; align-items: center; gap: 16px; background: white; border: 1px solid var(--border); padding: 22px; border-radius: 13px; }
+.allergy-summary-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; background: #fff4e6; color: #ed9a36; font-size: 23px; font-weight: 800; }
+.allergy-summary-icon.severe { background: #fff0f1; color: #e76d73; }
+.allergy-summary-card strong { font-family: 'Plus Jakarta Sans'; font-size: 25px; font-weight: 800; }
+.allergy-summary-card p { font-size: 11px; margin: 4px 0 0; }
+.allergy-card { display: flex; align-items: flex-start; gap: 15px; padding: 20px 5px; border-bottom: 1px solid var(--border); }
+.allergy-card:last-child { border-bottom: 0; }
+.allergy-card-icon { display: grid; place-items: center; flex-shrink: 0; width: 43px; height: 43px; border-radius: 11px; background: #fff0f1; color: #e76d73; font-size: 21px; }
+.allergy-card-content { flex: 1; min-width: 0; }
+.allergy-card-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 9px; }
+.allergy-card-header strong { font-size: 14px; }
+.allergy-card-content p { font-size: 12px; margin: 5px 0; overflow-wrap: anywhere; }
+.allergy-card-content p strong { color: #56627a; }
+.allergy-card-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.severity-pill { display: inline-flex; align-items: center; border-radius: 20px; padding: 5px 11px; font-size: 10px; font-weight: 800; }
+.severity-pill.mild { color: #149b75; background: #e7f8f0; }
+.severity-pill.moderate { color: #d58c27; background: #fff4e6; }
+.severity-pill.severe { color: #df5965; background: #fff0f1; }
+.severity-pill.unknown { color: #71809b; background: #edf0f5; }
+.allergy-match-warning { background: #fff0f1; border: 1px solid #f5cbd0; color: #ba4453; border-radius: 10px; padding: 14px 17px; margin-bottom: 18px; font-size: 12px; line-height: 1.7; }
+.allergy-match-warning strong { display: block; margin-bottom: 4px; }
+.allergy-match-warning p { color: #b45461; margin: 0; font-size: 12px; }
+.med-allergy-label { color: #d45562; font-size: 11px; font-weight: 800; display: block; margin-top: 6px; }
+.dose-item.allergy-flagged { background: #fff9f9; border-radius: 9px; padding-left: 10px; padding-right: 10px; }
+.med-row.allergy-flagged { background: #fff9f9; border-radius: 9px; padding-left: 10px; padding-right: 10px; }
+
 @media (max-width: 1150px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .hero-art { right: 10px; opacity: .7; }
 }
-
 @media (max-width: 850px) {
   .sidebar { transform: translateX(-100%); transition: transform .25s; box-shadow: 10px 0 35px #17233c10; }
   .sidebar.open { transform: translateX(0); }
@@ -300,7 +316,6 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
   .content { padding: 26px 22px; }
   .dashboard-grid { grid-template-columns: 1fr; }
 }
-
 @media (max-width: 600px) {
   h1 { font-size: 23px; }
   .welcome-row, .page-heading { align-items: flex-start; flex-direction: column; }
@@ -325,4 +340,7 @@ input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary)
   .dose-time { margin-left: auto; }
   .professional-row { align-items: flex-start; flex-direction: column; }
   .schedule-summary { flex-direction: column; }
+  .allergy-summary-grid { grid-template-columns: 1fr; }
+  .allergy-card { flex-wrap: wrap; }
+  .allergy-card-actions { width: 100%; padding-left: 58px; }
 }
