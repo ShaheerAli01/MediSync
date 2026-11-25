@@ -1,7 +1,13 @@
 const express = require("express");
+
+
+const cors = require("cors");
 const app = express();
 
 const port = 3000;
+
+app.use(cors());
+app.use(express.json());
 /*
 app.get(`/`, (req, res) => {
     res.json({
@@ -14,19 +20,22 @@ app.get(`/`, (req, res) => {
     });
 })
 */
+
+/*
 function MS_Listen() {
     app.listen(port, () => {
         console.log(`Server is listenting on ${port}`);
     })
-}
+}*/
 
-MS_Listen();
+//MS_Listen();
 
 let userDatabase = [{id: 1, email: "jeff.paterson23@gmail.com", password: "20L67KG112", firstName: "Jeff", lastName: "Paterson"}];
 let nextId = 2;
+//not permanent database, resets when server restarts
 
 //user creation
-export function MS_Post(MSuser) {
+function MS_Post() {
     app.post("/users",(req, res)=>{
         const {email, password, firstName, lastName} = req.body;
 
@@ -34,15 +43,15 @@ export function MS_Post(MSuser) {
             return res.status(400).json({error: `Not all of the required fields have been filled out.`});
         }
 
-        const newUser = MSuser;/*{
+        const newUser = {
             id: nextId,
-            email: email,
-            password: password,
-            firstName: firstName,
-            lastName: lastName
-        };*/
+            email,
+            password,
+            firstName,
+            lastName
+        };
 
-        console.log(MSuser.email)
+        //console.log(MSuser.email)
 
         userDatabase.push(newUser);
         nextId++;
@@ -51,8 +60,8 @@ export function MS_Post(MSuser) {
 }
 
 //User account removal
-export function MS_Delete(req) {
-    app.delete("/user/:id",(req, res)=>{
+function MS_Delete(req) {
+    app.delete("/users/:id",(req, res)=>{
         const userId = parseInt(req.params.id);
 
         //finds the user in the database via id #
@@ -69,19 +78,38 @@ export function MS_Delete(req) {
 }
 
 //view user 
-export function MS_Get(req) {
-    app.get(`/users`, (req,res)=>{
+function MS_Get(req) {
+    app.get("/users", (req, res)=>{
+        return res.status(200).json(userDatabase)
+    })
+
+    app.get(`/users/:id`, (req,res)=>{
         const userId = parseInt(req.params.id);
         const userIndex = userDatabase.findIndex(user => user.id === userId);
+        const user = userDatabase.find(user=>user.id === userId)
         if(userIndex === -1){
             return res.status(404).json({error:`User ${userId} not found in database.`});
         }
-        return userDatabase.userIndex;
+        return res.status(200).json(user);
         //return res.status(200).json(userDatabase);
     });
 }
+
+MS_Post()
+//MS_Listen()
+MS_Get()
+MS_Delete()
+
+module.exports ={
+    MS_Post,
+    //MS_Listen,
+    MS_Get,
+    MS_Delete
+};
 
 app.listen(port, ()=> {
     console.log(`Server is running on http://localhost:${port}`);
 
 });
+
+//MS_Listen();
